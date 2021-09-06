@@ -1,0 +1,3 @@
+{{extend 'layout.html'}}
+
+<h3>test debug data</h3><p>{{=showmsg}}</p>

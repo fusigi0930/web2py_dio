@@ -1,0 +1,60 @@
+import json
+import time
+import base64
+import gluon.contrib.pyaes as AES
+from Crypto.PublicKey import RSA
+from datetime import datetime
+from datetime import timedelta
+
+rsa_key_d = '553c08eb31076701'
+rsa_key_n = 'a7a09ab034348f91'
+rsa_key_e = '10001' # 65537
+
+# -*- coding: utf-8 -*-
+### required - do no delete
+def user(): 
+    return dict(form=auth())
+### end requires
+def error():
+    return dict()
+
+def reg_user():
+    if auth.is_logged_in():
+        auth.logout()
+    auth.settings.register_next = URL('api', 'register', vars=dict(msg='ok'))
+    return dict(form=auth.register(next = auth.settings.register_next))
+
+auth.settings.allow_basic_login = True
+auth.settings.actions_disabled.append('register')
+auth.settings.login_url = URL('api', 'user/login')
+@auth.requires_login()
+def pin():
+    # json.dumps(request.vars) to get all http GET request
+    now_time = datetime.now()
+    ustatus_info = db(db.t_user_status.f_user_id == auth.user.id).select(db.t_user_status.f_expire_time)[0]
+    return ustatus_info
+
+    if ustatus_info.f_status != 1:
+        return '2001: user not activated!'
+    
+    if ustatus_info.expire_time < now_time:
+        return '2002: expired'
+
+    verify_code = request.vars['vcode']
+    if verify_code == None or verify_code == '':
+        return '1001: no code'
+
+    un_b64data = base64.decode(verify_code)
+    return json.dumps(request.vars)
+
+def register():
+    msg = ""
+    user_group = db(db.auth_group.role == 'user').select()[0]
+    db(db.auth_group.role == 'user_{}'.format(auth.user.id)).delete()
+
+    db.auth_membership.update_or_insert(db.auth_membership.user_id == auth.user.id, user_id = auth.user.id, group_id = user_group)
+
+    now_time = datetime.now()
+    db.t_user_status.update_or_insert(db.t_user_status.f_user_id == auth.user.id, f_user_id = auth.user.id, f_status = 0, f_expire_time = now_time + timedelta(days=30) )
+
+    return dict(msg = 'user: {} {} ({}) register completed'.format(auth.user.first_name, auth.user.last_name, auth.user.email))
