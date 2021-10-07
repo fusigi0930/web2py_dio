@@ -29,3 +29,15 @@ def user_group():
     showmsg = showmsg + 'is login: {} '.format(auth.is_logged_in())
     showmsg = showmsg + 'has permission: {} '.format(auth.has_permission('edit', db.auth_membership, 0, auth.user.id))
     return locals()
+
+auth.settings.actions_disabled.append('register')
+auth.settings.login_url = URL('admin', 'user/login')
+@auth.requires_login()
+@auth.requires_permission('edit', db.auth_membership)
+def logs():
+    form = SQLFORM.smartgrid(db.t_log,onupdate=auth.archive)
+    #form = None
+    showmsg = 'group id: {} '.format(auth.id_group('admin'))
+    showmsg = showmsg + 'is login: {} '.format(auth.is_logged_in())
+    showmsg = showmsg + 'has permission: {} '.format(auth.has_permission('edit', db.auth_membership, 0, auth.user.id))
+    return locals()

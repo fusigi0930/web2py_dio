@@ -22,7 +22,7 @@ auth.settings.actions_disabled.append('register')
 auth.settings.login_url = URL('admin', 'user/login')
 @auth.requires_login()
 @auth.requires_permission('edit', db.auth_membership)
-def user_status_manage():
+def user_group():
     form = SQLFORM.smartgrid(db.auth_membership,onupdate=auth.archive)
     #form = None
     showmsg = 'group id: {} '.format(auth.id_group('admin'))

@@ -21,6 +21,8 @@ rsa_key64_d = '553c08eb31076701'
 rsa_key64_n = 'a7a09ab034348f91'
 rsa_key64_e = '10001' # 65537
 
+err_99999 = '99999: dio panic!!! fatal error'
+
 err_9999 = '9999: fatal error for user info'
 err_9998 = '9998: exception for process: '
 err_1001 = '1001: no code'
@@ -117,12 +119,21 @@ def result_pack(key, result):
 
 def new_record(uuid):
     # verify uuid length
-    if len(uuid) != 36:
+    if len(uuid) != 12:
         return err_9999
 
     now_time = datetime.now()
     db.t_user_status.update_or_insert(db.t_user_status.f_uuid == uuid, f_uuid = uuid, f_status = 0, f_expire_time = now_time + timedelta(days=30) )
     return err_1002 + uuid
+
+def update_log(uuid, src_ip, now_time, cmdline, verinfo, status):
+    if cmdline != None:
+        cmdline = base64.b64decode(cmdline)
+
+    if verinfo != None:
+        verinfo = base64.b64decode(verinfo)
+
+    db.t_log.insert(f_uuid = uuid, f_source = src_ip, f_req_time = now_time, f_cmdline = cmdline, f_verinfo = verinfo, f_status = status)
 
 # -*- coding: utf-8 -*-
 ### required - do no delete
@@ -139,11 +150,14 @@ def reg_user():
     return dict(form=auth.register(next = auth.settings.register_next))
 
 def pin():
-    # http://60.250.133.221:8888/dio/api/pin?vcode=m1H8%2FtEVnRY%3D%0A&vid=498acdfe-2b49-4886-8629-295c7122bc6a
+    # http://60.250.133.221:8888/dio/api/pin?vcode=m1H8%2FtEVnRY%3D%0A&vid=498acdfe-2b49-4886-8629-295c7122bc6a&vcmd=<b64>&vver=<b64>
     # json.dumps(request.vars) to get all http GET request'
     verify_code = request.vars['vcode']
     vid = request.vars['vid']
+    cmdline = request.vars['vcmd']
+    verinfo = request.vars['vver']
     now_time = datetime.now()
+    update_log(vid, request.client, now_time, cmdline, verinfo, 0)
 
     if verify_code == None or verify_code == '':
         return result_pack(None, err_1001)
@@ -157,8 +171,8 @@ def pin():
         # insert a new record for this uuid
         return result_pack(dersa, new_record(vid))
     
-    if len(vid) != 36:
-        return err_9999
+    if len(vid) != 12:
+        return result_pack(dersa, err_9999)
     
     if ustatus_info.f_status == 0:
         return result_pack(dersa, err_2001 + vid)
@@ -172,6 +186,25 @@ def pin():
 
     #return binascii.hexlify(dersa)
     return result_pack(dersa, ok_0000.format('go works'))
+
+def pon():
+    # http://60.250.133.221:8888/dio/api/pin?vcode=m1H8%2FtEVnRY%3D%0A&vid=498acdfe-2b49-4886-8629-295c7122bc6a&vcmd=<b64>&vver=<b64>
+    # json.dumps(request.vars) to get all http GET request'
+    verify_code = request.vars['vcode']
+    vid = request.vars['vid']
+    cmdline = request.vars['vcmd']
+    verinfo = request.vars['vver']
+    now_time = datetime.now()
+    update_log(vid, request.client, now_time, cmdline, verinfo, -1)
+
+    if verify_code == None or verify_code == '':
+        return result_pack(None, err_99999)
+
+    un_b64data = base64.b64decode(verify_code)
+    dersa = pri_decode64(un_b64data)
+
+    #return binascii.hexlify(dersa)
+    return result_pack(dersa, err_99999)
 
 def register():
     msg = ""
